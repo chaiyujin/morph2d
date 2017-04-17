@@ -5,109 +5,18 @@ let g_canvas = null
 let g_hide_canvas = null
 let default_canvas_size = { width: 800, height: 800 }
 //
-let shi_ta_e = null
+let g_image_size = null
+let g_image_url = null
+let shitae = null
+let texture = null
 let ku_mi = {}
-
-// image class
-class Image {
-    constructor(name, size, url, callback) {
-        this.name = name // to-do: check name
-        this.size = size
-        this.src = url
-        this.corner = {x: 0, y: 0}
-        this.is_read = false
-        this._callback = callback
-        this._img = null
-        this._img_data = null
-        this.load_image()
-    }
-    get name() { return this._name }
-    set name(v) { this._name = v }
-    get size() { return this._size }
-    set size(v) { this._size = v }
-    get src() { return this._src }
-    set src(v) { this._src = v }
-    get corner() { return this._corner }
-    set corner(v) { this._corner = v }
-    get is_ready() { return this._is_ready }
-    set is_ready(v) { this._is_ready = v }
-
-    load_image() {
-        // add into html, hide it
-        var test = $('#' + this.name)
-        if (test.length == 0) {
-            $('body').append('<img id="' + this.name + '" src="' + this.src + '"/>')
-            $('#' + this._name).hide()
-        }
-        else { 
-            test.attr('src', this.src)
-        }
-        this.is_ready = false;
-        // load and callback
-        this._img = $('#' + this.name)[0];
-        if (this._img.complete) {
-            this.is_ready = true;
-            this.get_data()
-            this._callback()
-        }
-        else {
-            this._img.onload = () => {
-                this.is_ready = true;
-                this.get_data()
-                this._callback()
-            }
-        }
-    }
-
-    get_data() {
-        console.log()
-        g_hide_canvas.clearRect(0, 0,
-                                g_hide_canvas.canvas.width,
-                                g_hide_canvas.canvas.height)
-        g_hide_canvas.drawImage(this._img, 0, 0)
-        this._img_data = g_hide_canvas.getImageData(0, 0, 800, 800)
-    }
-
-    draw() {
-        if (this._img_data != null)
-            g_canvas.putImageData(this._img_data, 0, 0)
-    }
-
-    destroy() {
-        delete this._img_data
-        this._img_data = null
-    }
-}
-
-/* when a new image coming in */
-var update_shitae = (size, url) => {
-    if (shi_ta_e != null) shi_ta_e.destroy()
-    shi_ta_e = new Image('shi_ta_e', size, url, ()=>{ shi_ta_e.draw() })
-}
-
-ipcRenderer.on('NewImage', (event, size, url) => {
-    update_shitae(size, url)
-})
-
-var update_canvas_size = (size) => {
-    default_canvas_size = size
-    {
-        var canvas = $("#myCanvas")[0];
-        canvas.width = size.width
-        canvas.height = size.height
-    }
-    {
-        var canvas = $("#hideCanvas")[0];
-        canvas.width = size.width
-        canvas.height = size.height
-    }
-}
-
 /* update ui */
 let g_closed_icon = '<span class="glyphicon glyphicon-chevron-right"></span>'
 let g_opened_icon = '<span class="glyphicon glyphicon-chevron-down"></span>'
 let g_tree_menu = {}
 let ItemHeight = 20
+let BackgroundName = '下絵'
+let TextureName = 'マッピング'
 
 var switch_item = (item, mode) => {
     var id = item.attr('id')
@@ -195,20 +104,6 @@ var add_click_callback = () => {
 }
 
 var update_tree_menu = (tree_menu, item_id, father_id) => {
-    // tree_menu.forEach((val, index, arr) => {
-    //     if (val.id == father_id) {
-    //         val.sub_menu.push({
-    //             id: item_id,
-    //             height: ItemHeight,
-    //             sub_menu: []
-    //         })
-    //         val.height += ItemHeight
-    //         return
-    //     }
-    //     else {
-    //         update_tree_menu(val.sub_menu, item_id, father_id)
-    //     }
-    // })
     tree_menu[item_id] = 0
 }
 
@@ -238,7 +133,18 @@ var add_layer = (item_name, father_name) => {
         return false
     }
     if (g_tree_menu[item_id] === undefined) {
-        return add_item(item_id, item_name, father_id)
+        var res = add_item(item_id, item_name, father_id)
+        if (item_name == BackgroundName) {
+            $("#" + item_id).insertBefore("#layer_" + TextureName);
+        }
+        else if (item_name == TextureName) {
+            $("#" + item_id).insertAfter("#layer_" + BackgroundName);
+        }
+        else {
+            $("#" + item_id).insertBefore("#layer_" + TextureName);
+            $("#" + item_id).insertAfter("#layer_" + BackgroundName);
+        }
+        return res
     }
     else
         return false
@@ -255,6 +161,195 @@ var add_morph = (item_name) => {
     }
     else
         return false
+}
+
+var draw_data_on = (img_data, canvas, alpha) => {
+    if (!alpha) alpha = 1
+    var index = 0
+    var pixel = canvas.getImageData(0, 0, img_data.width, img_data.height)
+    for (var x = 0; x < img_data.width; ++x) {
+        for (var y = 0; y < img_data.height; ++y) {
+            var a = img_data.data[index + 3] / 255.0 * alpha;
+            for (var k = 0; k < 3; ++k) {
+                img_data.data[index + k] = img_data.data[index + k] * a + 
+                                           pixel.data[index + k] * (1 - a)
+            }
+            img_data.data[index + 3] = 255
+            index += 4
+        }
+    }
+    canvas.putImageData(img_data, 0, 0)
+}
+
+// image class
+class Image {
+    constructor(name, size, url, callback) {
+        this.name = name // to-do: check name
+        this.size = size
+        this.src = url
+        this.corner = {x: 0, y: 0}
+        this.is_read = false
+        this._callback = callback
+        this._img = null
+        this._img_data = null
+        this.load_image()
+    }
+    get name() { return this._name }
+    set name(v) { this._name = v }
+    get size() { return this._size }
+    set size(v) { this._size = v }
+    get src() { return this._src }
+    set src(v) { this._src = v }
+    get corner() { return this._corner }
+    set corner(v) { this._corner = v }
+    get is_ready() { return this._is_ready }
+    set is_ready(v) { this._is_ready = v }
+
+    load_image() {
+        // add into html, hide it
+        var test = $('#' + this.name)
+        if (test.length == 0) {
+            $('body').append('<img id="' + this.name + '" src="' + this.src + '"/>')
+            $('#' + this._name).hide()
+        }
+        else { 
+            test.attr('src', this.src)
+        }
+        this.is_ready = false;
+        // load and callback
+        this._img = $('#' + this.name)[0];
+        if (this._img.complete) {
+            this.is_ready = true;
+            this.get_data()
+            this._callback()
+        }
+        else {
+            this._img.onload = () => {
+                this.is_ready = true;
+                this.get_data()
+                this._callback()
+            }
+        }
+    }
+
+    get_data() {
+        console.log()
+        g_hide_canvas.clearRect(0, 0,
+                                g_hide_canvas.canvas.width,
+                                g_hide_canvas.canvas.height)
+        g_hide_canvas.drawImage(this._img, 0, 0)
+        this._img_data = g_hide_canvas.getImageData(0, 0, 800, 800)
+    }
+
+    draw(alpha) {
+        if (this._img_data != null) {
+            draw_data_on(this._img_data, g_canvas, alpha)
+        }
+    }
+
+    destroy() {
+        delete this._img_data
+        this._img_data = null
+    }
+}
+
+var draw_canvas = (alpha) => {
+    // clear
+    g_canvas.fillStyle="#fff";
+    g_canvas.fillRect(
+        0, 0,
+        default_canvas_size.width, default_canvas_size.height
+    );
+    // draw shitae
+    if (shitae) shitae.draw(alpha)
+}
+
+/* when a new image coming in */
+var update_shitae = () => {
+    if (!g_image_url || !g_image_size) return
+    if (shitae != null) shitae.destroy()
+    add_layer(BackgroundName)
+    shitae = new Image('shitae', g_image_size, g_image_url, ()=>{ 
+        draw_canvas(0.5)
+     })
+}
+
+var update_texture = () => {
+    if (!g_image_url || !g_image_size) return
+    if (texture != null) texture.destroy()
+    add_layer(TextureName)
+    texture = new Image('shitae', g_image_size, g_image_url, ()=>{})
+}
+
+var remove_modal = () => {
+	$('body').children('.modal_background').remove();
+	$('body').children('.modal_dialog').remove();
+}
+
+var confirm_image_type = () => {
+    var is_texture = $("input[name = 'options_texture']")[0].checked
+    var is_background = $("input[name = 'options_background']")[0].checked
+    if (!is_texture && !is_background) return
+    if (is_texture) {
+        update_texture()
+    }
+    else if (is_background) {
+        update_shitae()
+    }
+    remove_modal()
+}
+
+var image_type_query_template = '\
+    <div class="modal_background" onclick="remove_modal()"></div>\
+    <div class="modal_dialog">\
+        <div class="middle">Which type is the image</div>\
+        <div class="middle">\
+            <div id="image_query" class="btn-group" data-toggle="buttons">\
+                <label id="radio_texture" class="btn btn-primary">\
+                    <input type="radio" name="options_texture" id="option1">' + TextureName + '\
+                </label>\
+                <label class="btn btn-primary">\
+                    <input type="radio" name="options_background" id="option2">' +  BackgroundName + '\
+                </label>\
+            </div>\
+        </div>\
+        <div class="middle">\
+            <button type="button" class="btn btn-default" onclick="confirm_image_type()">Confirm</button>\
+        </div>\
+    </div>'
+
+var query_image_type = (only_shitae) => {
+    remove_modal()
+    $('body').append(image_type_query_template)
+    if (only_shitae)
+        $("#radio_texture").hide()
+}
+
+ipcRenderer.on('NewImage', (event, size, url) => {
+    g_image_size = size
+    g_image_url = url
+    var arr = url.split('.')
+    var only_shitae = true
+    if (arr[arr.length - 1] == 'png')
+        only_shitae = false
+    query_image_type(only_shitae)
+    // update_shitae(size, url)
+})
+
+var update_canvas_size = (size) => {
+    default_canvas_size = size
+    {
+        var canvas = $("#myCanvas")[0];
+        canvas.width = size.width
+        canvas.height = size.height
+    }
+    {
+        var canvas = $("#hideCanvas")[0];
+        canvas.width = size.width
+        canvas.height = size.height
+    }
+    
+    draw_canvas();
 }
 
 /* init */
@@ -291,12 +386,6 @@ $(document).ready(() => {
     add_click_callback()
     g_tree_menu['layers'] = 0
     g_tree_menu['morph'] = 0
-
-    console.log(g_tree_menu)
-
-    add_layer('test')
-    add_layer('test_t', 'test')
-    add_morph('face')
 
     console.log("document is ready.")
 }) 
