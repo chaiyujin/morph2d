@@ -103,6 +103,35 @@ var update_canvas_size = (size) => {
     }
 }
 
+/* update ui */
+let g_closed_icon = '<span class="glyphicon glyphicon-chevron-right"></span>'
+let g_opened_icon = '<span class="glyphicon glyphicon-chevron-down"></span>'
+
+var switch_item = (id) => {
+    var item = $("#" + id)
+    if (item.length == 0) return
+    var icon = item.children('.title').children('.icon')
+    if (icon.children('span').length == 0) {
+        item.removeClass('opened')
+        item.addClass('closed')
+        return
+    }
+    if (item.hasClass('closed')) {
+        // open
+        item.removeClass('closed')
+        item.addClass('opened')
+        // change icon
+        icon.html(g_opened_icon)
+    }
+    else {
+        // close
+        item.removeClass('opened')
+        item.addClass('closed')
+        // change icon
+        icon.html(g_closed_icon)
+    }
+}
+
 /* init */
 $(document).ready(() => {
     {
@@ -133,5 +162,10 @@ $(document).ready(() => {
             $(".right-area").height("100%")
         }
     })
+
+    $(".title").click(function(event) {
+        var id = $(event.target).closest('.level')[0].id
+        switch_item(id)
+    });
     console.log("document is ready.")
 }) 
