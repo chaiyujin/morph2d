@@ -106,9 +106,11 @@ var update_canvas_size = (size) => {
 /* update ui */
 let g_closed_icon = '<span class="glyphicon glyphicon-chevron-right"></span>'
 let g_opened_icon = '<span class="glyphicon glyphicon-chevron-down"></span>'
+let g_tree_menu = {}
+let ItemHeight = 20
 
-var switch_item = (id) => {
-    var item = $("#" + id)
+var switch_item = (item, mode) => {
+    var id = item.attr('id')
     if (item.length == 0) return
     var icon = item.children('.title').children('.icon')
     if (icon.children('span').length == 0) {
@@ -116,20 +118,114 @@ var switch_item = (id) => {
         item.addClass('closed')
         return
     }
-    if (item.hasClass('closed')) {
+    
+    if (item.hasClass('closed') || mode == 'open') {
         // open
         item.removeClass('closed')
         item.addClass('opened')
         // change icon
         icon.html(g_opened_icon)
+        // animate height
+        item.animate({height: 'auto'}, 'fast', () => {        
+            item.children('.sub-level').show()
+        })
     }
-    else {
+    else if (item.hasClass('opened') || mode == 'close'){
         // close
         item.removeClass('opened')
         item.addClass('closed')
         // change icon
         icon.html(g_closed_icon)
+        item.children('.sub-level').hide()
+        item.animate({height: 'auto'}, 'fast')
     }
+}
+
+var switch_item_id = (id, mode) => {
+    var item = $("#" + id)
+    switch_item(item, mode)
+}
+
+var calculate_depth = (item) => {
+    var depth = 0
+    if (!item.hasClass('level')) {
+        item = item.parent().closest('.level')
+    }
+    // invalid id
+    if (item.length == 0) return -1
+    while (true) {
+        var prev = item.parent().closest('.level')
+        if (prev.length == 0) break
+        item = prev
+        depth += 1
+    }
+    return depth
+}
+
+var calculate_depth_id = (id) => {
+    var item = $("#" + id);
+    return calculate_depth(item)
+}
+
+const layer_template = '\
+    <div id="#layer_id" class="level sub-level">\
+        <div class="title clearfix">\
+            <div class="icon fluid"></div>\
+            <div class="txt fluid">#layer_name</div>\
+        </div>\
+    </div>'
+
+var add_icon = (id) => {
+    var item = $("#" + id);
+    if (!item.hasClass('level')) {
+        item = item.parent().closest('.level')
+    }
+    if (item.length == 0) { console.log('fail to add icon'); return }
+
+    // update icon
+    item.children('.title').children('.icon').html(g_opened_icon)
+    switch_item(item, 'open')
+}
+
+var add_click_callback = () => {
+    // append click
+    $('.level').click(function(event) {
+        var item = $(event.target).closest('.level')
+        switch_item(item)
+    });
+}
+
+var update_tree_menu = (tree_menu, item_id, father_id) => {
+    // tree_menu.forEach((val, index, arr) => {
+    //     if (val.id == father_id) {
+    //         val.sub_menu.push({
+    //             id: item_id,
+    //             height: ItemHeight,
+    //             sub_menu: []
+    //         })
+    //         val.height += ItemHeight
+    //         return
+    //     }
+    //     else {
+    //         update_tree_menu(val.sub_menu, item_id, father_id)
+    //     }
+    // })
+    tree_menu[item_id] = 0
+}
+
+var add_item = (item_id, item_name, father_id) => {
+    depth = calculate_depth_id(father_id) + 1
+    if (depth <= 0) return
+    // update g_tree_menu
+    update_tree_menu(g_tree_menu, item_id, father_id)
+    var new_txt = layer_template.replace(/#layer_id/, item_id).replace(/#layer_name/, item_name)
+    // new html
+    $("#" + father_id).append(new_txt)
+    // add icon
+    add_icon(father_id)
+    // padding
+    var padding = (5 + depth * 16) + 'px';
+    $("#" + item_id).children('.title').css('padding-left', padding)
 }
 
 /* init */
@@ -163,9 +259,16 @@ $(document).ready(() => {
         }
     })
 
-    $(".title").click(function(event) {
-        var id = $(event.target).closest('.level')[0].id
-        switch_item(id)
-    });
+    add_click_callback()
+    g_tree_menu['layers'] = 0
+    g_tree_menu['morph'] = 0
+
+    console.log(g_tree_menu)
+
+    add_item('layer_test', 'test', 'layers')
+    add_item('layer_test0', 'test0', 'layers')
+    add_item('layer_test_t', 'test_t', 'layer_test')
+    add_item('layer_test_t_t', 'test_t', 'layer_test_t')
+
     console.log("document is ready.")
 }) 
