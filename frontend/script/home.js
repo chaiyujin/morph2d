@@ -126,9 +126,8 @@ var switch_item = (item, mode) => {
         // change icon
         icon.html(g_opened_icon)
         // animate height
-        item.animate({height: 'auto'}, 'fast', () => {        
-            item.children('.sub-level').show()
-        })
+        item.children('.sub-level').show()
+        // item.animate({height: 'auto'}, 'fast', () => {})
     }
     else if (item.hasClass('opened') || mode == 'close'){
         // close
@@ -137,7 +136,7 @@ var switch_item = (item, mode) => {
         // change icon
         icon.html(g_closed_icon)
         item.children('.sub-level').hide()
-        item.animate({height: 'auto'}, 'fast')
+        // item.animate({height: 'auto'}, 'fast')
     }
 }
 
@@ -215,7 +214,7 @@ var update_tree_menu = (tree_menu, item_id, father_id) => {
 
 var add_item = (item_id, item_name, father_id) => {
     depth = calculate_depth_id(father_id) + 1
-    if (depth <= 0) return
+    if (depth <= 0) return false
     // update g_tree_menu
     update_tree_menu(g_tree_menu, item_id, father_id)
     var new_txt = layer_template.replace(/#layer_id/, item_id).replace(/#layer_name/, item_name)
@@ -226,6 +225,36 @@ var add_item = (item_id, item_name, father_id) => {
     // padding
     var padding = (5 + depth * 16) + 'px';
     $("#" + item_id).children('.title').css('padding-left', padding)
+    return true
+}
+
+var add_layer = (item_name, father_name) => {
+    var item_id = 'layer_' + item_name
+    var father_id = 'layers'
+    if (father_name)
+        father_id = 'layer_' + father_name
+    if (g_tree_menu[father_id] === undefined) {
+        alert('No such father layer.')
+        return false
+    }
+    if (g_tree_menu[item_id] === undefined) {
+        return add_item(item_id, item_name, father_id)
+    }
+    else
+        return false
+}
+
+var add_morph = (item_name) => {
+    var item_id = 'morph_' + item_name
+    if (g_tree_menu[item_id] === undefined) {
+        var res = add_item(item_id, item_name, 'morph')
+        if (res) {
+            // $("#" + item_id).append("en")
+        }
+        return res
+    }
+    else
+        return false
 }
 
 /* init */
@@ -265,10 +294,9 @@ $(document).ready(() => {
 
     console.log(g_tree_menu)
 
-    add_item('layer_test', 'test', 'layers')
-    add_item('layer_test0', 'test0', 'layers')
-    add_item('layer_test_t', 'test_t', 'layer_test')
-    add_item('layer_test_t_t', 'test_t', 'layer_test_t')
+    add_layer('test')
+    add_layer('test_t', 'test')
+    add_morph('face')
 
     console.log("document is ready.")
 }) 
