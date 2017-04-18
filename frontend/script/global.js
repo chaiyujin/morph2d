@@ -13,8 +13,8 @@ let ku_mi = {}
 // for tree menu
 let g_tree_menu = {}
 let ItemHeight = 20
-let BackgroundName = '下絵'
-let TextureName = 'マッピング'
+let BackgroundName = 'Background'
+let TextureName = 'Texture'
 let ClosedIcon = '<span class="glyphicon glyphicon-chevron-right"></span>'
 let OpenedIcon = '<span class="glyphicon glyphicon-chevron-down"></span>'
 

@@ -12,11 +12,13 @@ body {
 }
 
 .left-bar {
+    z-index: 5;
     position: absolute;
     left:0;
-    width: 250px;
+    width: 251px;
     height: 100%;
     background-color: #333;
+    border-right: 1px solid black;
 }
 
 .right-area {
@@ -32,6 +34,9 @@ body {
     justify-content: center;
 }
 
+.canvas {
+    box-shadow: 0px 0px 5px #000;
+}
 
 .fluid {
     float: left;
@@ -82,11 +87,22 @@ body {
 }
 
 .tree-item .first-level .title {
+    z-index: 10;
     background-color: #555;
+    position:relative;
+}
+.first-level.opened .title {
+    box-shadow: 0px 1px 1px #000;
+}
+.first-level.closed .title {
+    box-shadow: none;
 }
 
 .tree-item .sub-level .title {
+    z-index: 5;
     background-color: #333;
+    box-shadow: none;
+    position:relative;
 }
 .tree-item .sub-level .title:hover {
     background-color: #444;
@@ -97,6 +113,7 @@ body {
 .opened {}
 .level {}
 
+
 .modal_background { z-index: 190; position: fixed; margin:auto;left:0; right:0; top:0; bottom:0; width: 100%; height: 100%; background-color: #444; opacity: 0.6; }
 .modal_dialog { z-index: 200; position: fixed; margin:auto; left:0; right:0; top: 100px;  width: 800px; background-color: #222; box-shadow: 0px 0.5px 10px #000;  }
 .modal_dialog .middle {
@@ -106,6 +123,7 @@ body {
 
 /* foot */
 .foot-bar {
+    z-index: 100;
     position: fixed;
     height: 20px;
     line-height: 20px;
@@ -115,6 +133,7 @@ body {
     background-color: #2791C9;
     padding-left: 10px;
     font-size: 12px;
+    box-shadow: 0px -1px 1px #000;
 }
 
 .foot-bar .message {
