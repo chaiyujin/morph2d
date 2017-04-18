@@ -4,7 +4,9 @@ class Image {
         this.name = name // to-do: check name
         this.size = size
         this.src = url
-        this.corner = {x: 0, y: 0}
+        this.corner = {
+            x: (default_canvas_size.width - this.size.width) / 2,
+            y: (default_canvas_size.height - this.size.height) / 2}
         this.is_read = false
         this._callback = callback
         this._img = null
@@ -21,6 +23,12 @@ class Image {
     set corner(v) { this._corner = v }
     get is_ready() { return this._is_ready }
     set is_ready(v) { this._is_ready = v }
+
+    move(delta) {
+        this.corner.x += delta.x
+        this.corner.y += delta.y
+        this.load_image()
+    }
 
     load_image() {
         // add into html, hide it
@@ -50,11 +58,11 @@ class Image {
     }
 
     get_data() {
-        console.log()
+        console.log('get data')
         g_hide_canvas.clearRect(0, 0,
                                 g_hide_canvas.canvas.width,
                                 g_hide_canvas.canvas.height)
-        g_hide_canvas.drawImage(this._img, 0, 0)
+        g_hide_canvas.drawImage(this._img, this.corner.x, this.corner.y)
         this._img_data = g_hide_canvas.getImageData(0, 0, 800, 800)
     }
 
