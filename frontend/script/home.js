@@ -59,6 +59,8 @@ $(document).ready(() => {
     g_tree_menu['layers'] = 0
     g_tree_menu['morph'] = 0
 
+    g_configuration.update_ui()
+
     add_morph('face')
 
     console.log("document is ready.")
