@@ -1,33 +1,3 @@
-var switch_item = (item, mode) => {
-    var id = item.attr('id')
-    if (item.length == 0) return
-    var icon = item.children('.title').children('.icon')
-    if (icon.children('span').length == 0) {
-        item.removeClass('opened')
-        item.addClass('closed')
-        return
-    }
-    
-    if (item.hasClass('closed') || mode == 'open') {
-        // open
-        item.removeClass('closed')
-        item.addClass('opened')
-        // change icon
-        icon.html(OpenedIcon)
-        // animate height
-        item.children('.sub-level').show()
-        // item.animate({height: 'auto'}, 'fast', () => {})
-    }
-    else if (item.hasClass('opened') || mode == 'close'){
-        // close
-        item.removeClass('opened')
-        item.addClass('closed')
-        // change icon
-        icon.html(ClosedIcon)
-        item.children('.sub-level').hide()
-        // item.animate({height: 'auto'}, 'fast')
-    }
-}
 
 var switch_item_id = (id, mode) => {
     var item = $("#" + id)
@@ -125,9 +95,9 @@ var add_layer = (item_name, father_name) => {
 }
 
 var add_morph = (item_name) => {
-    var item_id = 'morph_' + item_name
+    var item_id = 'morphs_' + item_name
     if (g_tree_menu[item_id] === undefined) {
-        var res = add_item(item_id, item_name, 'morph')
+        var res = add_item(item_id, item_name, 'morphs')
         if (res) {
             // $("#" + item_id).append("en")
         }

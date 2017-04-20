@@ -61,7 +61,5 @@ $(document).ready(() => {
 
     g_configuration.update_ui()
 
-    add_morph('face')
-
     console.log("document is ready.")
 }) 
