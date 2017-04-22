@@ -91,6 +91,9 @@ body {
     background-color: #555;
     position:relative;
 }
+.tree-item .chosen .title {
+    background-color: #888;
+}
 .first-level.opened .title {
     box-shadow: 0px 1px 1px #000;
 }

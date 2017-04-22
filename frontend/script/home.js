@@ -3,28 +3,33 @@ const {ipcRenderer} = require('electron')
 ipcRenderer.on('NewImage', (event, size, url) => {
     g_new_image_size = size
     g_new_image_url = url
-    var arr = url.split('.')
-    var only_shitae = true
-    if (arr[arr.length - 1] == 'png')
-        only_shitae = false
-    query_image_type(only_shitae)
+    query_image_type()
 })
 
 ipcRenderer.on('undo', (event) => {
     console.log('undo')
-    g_history.undo()
+    Commands.undo()
 })
 
 ipcRenderer.on('redo', (event) => {
     console.log('redo')
-    g_history.redo()
+    Commands.redo()
 })
 
 /* init */
 $(document).ready(() => {
+    
+    g_configuration = new Configuration()
     {
-        var c = $("#myCanvas")[0]
-        g_canvas =c.getContext("2d")
+        var c = $("#sourceCanvas")[0]
+        g_configuration.source_canvas = c.getContext("2d")
+        g_configuration.source_surface = new BezierSurfaces(4, 4, default_canvas_size.width, default_canvas_size.height)
+    }
+    {
+        var c = $("#targetCanvas")[0]
+        g_configuration.target_canvas =c.getContext("2d")
+        g_configuration.target_surface = new BezierSurfaces(5, 5, default_canvas_size.width, default_canvas_size.height)
+        $("#targetCanvas").hide()
     }
     {
         var c = $("#hideCanvas")[0]
@@ -54,10 +59,12 @@ $(document).ready(() => {
     // append click
     $('.level').click(function(event) {
         var item = $(event.target).closest('.level')
-        switch_item(item)
+        g_configuration.choose(item[0].id)
+        say_message('Choose ' + item[0].id)
+        // switch_item(item)
     });
-    g_tree_menu['layers'] = 0
-    g_tree_menu['morph'] = 0
+
+    
 
     g_configuration.update_ui()
 

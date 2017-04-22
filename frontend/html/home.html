@@ -9,10 +9,11 @@
         <script>window.$ = window.jQuery = window.jquery = require("../script/jquery.js");</script>
         <script>require("../bootstrap-3.3.7-dist/js/bootstrap.js");</script>
         <script src='../script/global.js'></script>
-        <script src='../script/configuration.js'></script>
-        <script src='../script/history.js'></script>
         <script src='../script/tree_menu.js'></script>
         <script src='../script/image.js'></script>
+        <script src='../script/commands.js'></script>
+        <script src='../script/configuration.js'></script>
+        <script src='../script/bezier.js'></script>
         <script src='../script/home.js'></script>
     </head>
 
@@ -22,22 +23,22 @@
             <div class="row">
                 <div class="left-bar">
                     <div id="tree-menu" class="tree-item">
-                        <div id="layers" class="level first-level closed">
+                        <div id="source" class="level first-level closed chosen">
                             <div class="title clearfix">
                                 <div class="icon fluid">
                                 </div>
                                 <div class="fluid">
-                                    <span>LAYERS</span>
+                                    <span>SOURCE</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div id="morphs" class="level first-level closed">
+                        <div id="target" class="level first-level closed">
                             <div class="title clearfix">
                                 <div class="icon fluid">
                                 </div>
                                 <div class="fluid">
-                                    <span>MORPH</span>
+                                    <span>TARGET</span>
                                 </div>
                             </div>
                         </div>
@@ -47,7 +48,8 @@
                 </div>
                 <div class="right-area">
                     <div class="canvas">
-                        <canvas id="myCanvas" width="800" height="800"></canvas>
+                        <canvas id="sourceCanvas" width="800" height="800"></canvas>
+                        <canvas id="targetCanvas" width="800" height="800"></canvas>
                         <canvas id="hideCanvas" width="800" height="800"></canvas>
                     </div>
                 </div>

@@ -1,5 +1,5 @@
 // image class
-class Image {
+class MyImage {
     constructor(name, size, url, callback) {
         this.name = name // to-do: check name
         this.size = size
@@ -31,6 +31,7 @@ class Image {
     }
 
     load_image() {
+        console.log('load image')
         // add into html, hide it
         var test = $('#' + this.name)
         if (test.length == 0) {
@@ -63,12 +64,12 @@ class Image {
                                 g_hide_canvas.canvas.width,
                                 g_hide_canvas.canvas.height)
         g_hide_canvas.drawImage(this._img, this.corner.x, this.corner.y)
-        this._img_data = g_hide_canvas.getImageData(0, 0, 800, 800)
+        this._img_data = g_hide_canvas.getImageData(0, 0, default_canvas_size.width, default_canvas_size.height)
     }
 
-    draw(alpha) {
+    draw(canvas, alpha) {
         if (this._img_data != null) {
-            draw_data_on(this._img_data, g_canvas, alpha)
+            draw_data_on(this._img_data, canvas, alpha)
         }
     }
 
@@ -96,74 +97,45 @@ var draw_data_on = (img_data, canvas, alpha) => {
     canvas.putImageData(img_data, 0, 0)
 }
 
-var draw_scene = (alpha) => {
-    // clear
-    g_canvas.fillStyle="#fff";
-    g_canvas.fillRect(
-        0, 0,
-        default_canvas_size.width, default_canvas_size.height
-    );
-    // draw shitae
-    if (shitae) {
-        shitae.draw(0.5)
+class ImageCommand {
+    constructor(is_source, img_size, img_url) {
+        this._is_source = is_source
+        this._size = img_size
+        this._url = img_url
+        if (is_source) {
+            this._old_img = g_configuration.source
+            this._img = new MyImage('source_img', this._size, this._url, ()=>{this.exec()})
+        }
+        else {
+            this._old_img = g_configuration.target
+            this._img = new MyImage('target_img', this._size, this._url, ()=>{this.exec()})
+        }
     }
-}
 
-/* when a new image coming in */
-var update_shitae = () => {
-    if (!g_image_url || !g_image_size) {
-        delete shitae
-        shitae = null
-        var id = 'layer_' + BackgroundName
-        remove_id_from_menu(id)
-        draw_scene()
-        return
+    exec() {
+        if (this._is_source) {
+            say_message('New source image')
+            g_configuration.choose('source')
+            g_configuration.source = this._img
+        }
+        else {
+            say_message('New target image')
+            g_configuration.choose('target')
+            g_configuration.target = this._img
+        }
+        g_configuration.draw()
     }
-    if (shitae != null) shitae.destroy()
-    add_layer(BackgroundName)
-    shitae = new Image('shitae', g_image_size, g_image_url, ()=>{ 
-        draw_scene()
-     })
-}
 
-var update_texture = () => {
-    if (!g_image_url || !g_image_size) {
-        delete texture
-        texture = null
-        var id = 'layer_' + TextureName
-        remove_id_from_menu(id)
-        return
-    }
-    if (texture != null) texture.destroy()
-    add_layer(TextureName)
-    texture = new Image('texture', g_image_size, g_image_url, ()=>{})
-}
-
-var add_image_do = (detail) => {
-    g_image_url = detail.to.url
-    g_image_size = detail.to.size
-    var is_background = detail.to.is_background
-    if (is_background) {
-        update_shitae()
-        say_message('new background from ' + detail.to.url)
-    }
-    else {
-        update_texture()
-        say_message('new texture from ' + detail.to.url)
-    }
-}
-
-var add_image_undo = (detail) => {
-    g_image_url = detail.from.url
-    g_image_size = detail.from.size
-    var is_background = detail.from.is_background
-    if (is_background) {
-        update_shitae()
-        say_message('roll back background to ' + detail.from.url)
-    }
-    else {
-        update_texture()
-        say_message('roll back texture to ' + detail.from.url)
+    undo() {
+        // if (this._is_source) {
+        //     g_configuration.source = this._old_img
+        //     g_configuration.choose('source')
+        // }
+        // else {
+        //     g_configuration.target = this._old_img
+        //     g_configuration.choose('target')
+        // }
+        // g_configuration.draw()
     }
 }
 
@@ -173,30 +145,10 @@ var remove_modal = () => {
 }
 
 var confirm_image_type = () => {
-    var is_texture = $("input[name = 'options_texture']")[0].checked
-    var is_background = $("input[name = 'options_background']")[0].checked
-    if (!is_texture && !is_background) return
-    detail = {
-        to: {
-            url: g_new_image_url,
-            size: g_new_image_size,
-            is_background: is_background
-        },
-        from: {
-            url: null,
-            size: null,
-            is_background: is_background
-        }
-    }
-    if (is_background && shitae) {
-        detail.from.url = shitae.src
-        detail.from.size = shitae.size
-    }
-    else if (!is_background && texture) {
-        detail.from.url = texture.src
-        detail.from.size = texture.size
-    }
-    g_history.add_operation(detail, add_image_do, add_image_undo)
+    var is_source = $("input[name = 'options_source']")[0].checked
+    var is_target = $("input[name = 'options_target']")[0].checked
+    if (!is_source && !is_target) return
+    Commands.push_exec(new ImageCommand(is_source, g_new_image_size, g_new_image_url))
     remove_modal()
 }
 
@@ -206,11 +158,11 @@ var image_type_query_template = '\
         <div class="middle">Which type is the image</div>\
         <div class="middle">\
             <div id="image_query" class="btn-group" data-toggle="buttons">\
-                <label id="radio_texture" class="btn btn-primary">\
-                    <input type="radio" name="options_texture" id="option1">' + TextureName + '\
+                <label class="btn btn-primary">\
+                    <input type="radio" name="options_source" id="option1">' + SourceName + '\
                 </label>\
                 <label class="btn btn-primary">\
-                    <input type="radio" name="options_background" id="option2">' +  BackgroundName + '\
+                    <input type="radio" name="options_target" id="option2">' +  TargetName + '\
                 </label>\
             </div>\
         </div>\
@@ -219,17 +171,20 @@ var image_type_query_template = '\
         </div>\
     </div>'
 
-var query_image_type = (only_shitae) => {
+var query_image_type = () => {
     remove_modal()
     $('body').append(image_type_query_template)
-    if (only_shitae)
-        $("#radio_texture").hide()
 }
 
 var update_canvas_size = (size) => {
     default_canvas_size = size
     {
-        var canvas = $("#myCanvas")[0];
+        var canvas = $("#sourceCanvas")[0];
+        canvas.width = size.width
+        canvas.height = size.height
+    }
+    {
+        var canvas = $("#targetCanvas")[0];
         canvas.width = size.width
         canvas.height = size.height
     }
@@ -239,5 +194,55 @@ var update_canvas_size = (size) => {
         canvas.height = size.height
     }
     
-    draw_scene();
+    g_configuration.draw()
+}
+
+var dashedLineTo = function (canvas, p0, p1, pattern) {  
+    var fromX = p0.x, fromY = p0.y
+    var toX = p1.x, toY = p1.y
+    // default interval distance -> 5px  
+    if (typeof pattern === "undefined") {  
+        pattern = 5;  
+    }  
+  
+    // calculate the delta x and delta y  
+    var dx = (toX - fromX);  
+    var dy = (toY - fromY);  
+    var distance = Math.floor(Math.sqrt(dx*dx + dy*dy));  
+    var dashlineInteveral = (pattern <= 0) ? distance : (distance/pattern);  
+    var deltay = (dy/distance) * pattern;  
+    var deltax = (dx/distance) * pattern;  
+      
+    canvas.strokeStyle="RGBA(150,150,150, 0.5)";  
+
+    canvas.beginPath();  
+    for(var dl=0; dl<dashlineInteveral; dl++) {  
+        if(dl%2) {  
+            canvas.lineTo(fromX + dl*deltax, fromY + dl*deltay);  
+        } else {                      
+            canvas.moveTo(fromX + dl*deltax, fromY + dl*deltay);                    
+        }                 
+    }  
+    canvas.stroke();  
+};  
+
+var lineTo = function (canvas, p0, p1) {
+    var fromX = p0.x, fromY = p0.y
+    var toX = p1.x, toY = p1.y
+    canvas.strokeStyle="RGBA(150,150,150, 0.5)";
+    canvas.beginPath();
+    canvas.moveTo(fromX, fromY);    
+    canvas.lineTo(toX, toY); 
+    canvas.stroke();  
+}
+
+var drawPoint = function (canvas, p) {
+    var x = p.x
+    var y = p.y
+
+    canvas.fillStyle="RGBA(0,0,0, 0.5)"
+    canvas.fillRect(x - 5, y - 5, 10, 10)
+    canvas.fillStyle="RGBA(150,150,150, 0.5)"
+    canvas.fillRect(x - 3, y - 3, 6, 6)
+
 }

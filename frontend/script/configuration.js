@@ -1,87 +1,76 @@
-var switch_item = (item, mode) => {
-    var id = item.attr('id')
-    if (item.length == 0) return
-    var icon = item.children('.title').children('.icon')
-    if (icon.children('span').length == 0) {
-        item.removeClass('opened')
-        item.addClass('closed')
-        return
-    }
-    
-    if (item.hasClass('closed') || mode == 'open') {
-        // open
-        item.removeClass('closed')
-        item.addClass('opened')
-        // change icon
-        icon.html(OpenedIcon)
-        // animate height
-        item.children('.sub-level').show()
-        // item.animate({height: 'auto'}, 'fast', () => {})
-    }
-    else if (item.hasClass('opened') || mode == 'close'){
-        // close
-        item.removeClass('opened')
-        item.addClass('closed')
-        // change icon
-        icon.html(ClosedIcon)
-        item.children('.sub-level').hide()
-        // item.animate({height: 'auto'}, 'fast')
-    }
-}
-
-class Part {
-    constructor(source_texture, triangle_mesh) {
-        this.source = source_texture
-        this.mesh = triangle_mesh
-    }
-
-    get source()    { return this._source }
-    get mesh()      { return this._mesh}
-
-    set source(v)   { this._source = v }
-    set mesh(v)     { this._mesh = v }
-
-}
 // the configuration is a state of the program
 class Configuration {
     constructor() {
         // the background thing
-        this.draft = null
-        this.textures = []
+        this._select = 'source'
+        this.source_canvas = null
+        this.target_canvas = null
+        this.source = null
+        this.target = null
         // the parts of final image
-        this.parts = []
+        this.source_surface = null
         // the morphs
-        this.morph_list = []
+        this.target_surface = null
         
         // for ui
         this.tree_menu = {
             chosen: null, // record the name of chosen item
-            id_map: { layers: 0, morphs: 0 }, // record all the name used
+            id_map: { source: 0, target: 0 }, // record all the name used
             menu: [
-                { name: 'LAYER', id: 'layers', is_open: false, sub_menu: [] },
-                { name: 'MORPH', id: 'morphs', is_open: false, sub_menu: [] }
+                { name: 'Source', id: 'source', is_open: false, sub_menu: [] },
+                { name: 'Target', id: 'target', is_open: false, sub_menu: [] }
             ] // the structure of the menu, if sub_menu is empty, it's an item
         }
     }
 
-    get draft()      { return this._draft }
-    get textures()   { return this._textures }
-    get parts()      { return this._parts }
-    get morph_list() { return this._morph_list }
+    get source()    { return this._source }
+    get target()    { return this._target }
+    get source_canvas()  { return this._source_canvas }
+    get target_canvas()  { return this._target_canvas }
 
-    set draft(v)     { this._draft = v }
-    set textures(v)  { this._textures = v }
-    set parts(v)     { this._parts = v }
-    set morph_list(v){ this._morph_list = v }
+    set source(v)   { this._source = v }
+    set target(v)   { this._target = v }
+    set source_canvas(v)  { this._source_canvas = v }
+    set target_canvas(v)  { this._target_canvas = v }
+
+    draw_img_surface(img, surface, canvas) {
+        canvas.fillStyle="#fff";
+        canvas.fillRect(
+            0, 0,
+            default_canvas_size.width, default_canvas_size.height
+        );
+        if (img) img.draw(canvas, 1)
+        if (surface) surface.draw(canvas)
+    }
+
+    choose(which) {
+        if (which == 'source') {
+            this._select = 'source'
+            $('#source').addClass('chosen')
+            $('#target').removeClass('chosen')
+            this.draw()
+        }
+        else if (which == 'target') {
+            this._select = 'target'
+            $('#source').removeClass('chosen')
+            $('#target').addClass('chosen')
+            this.draw()
+        }
+    }
 
     draw() {
-        // draw draft if exits
-        if (this.draft) this.draft.draw(0.5) //
-        // does not any texture
-        // draw the parts
-        for (var i = 0; i < parts.length; ++i) {
-            parts[i].draw()
+        if (this._select == 'source') {
+            $("#sourceCanvas").show()
+            $("#targetCanvas").hide()
+            this.draw_img_surface(this.source, this.source_surface, this._source_canvas)
         }
+        else if (this._select == 'target') {
+            $("#sourceCanvas").hide()
+            $("#targetCanvas").show()
+            this.draw_img_surface(this.target, this.target_surface, this._target_canvas)
+        }
+        else
+            alert("Error!")
     }
 
     update_ui() {
@@ -153,5 +142,3 @@ class Configuration {
     }
 
 }
-
-g_configuration = new Configuration()
