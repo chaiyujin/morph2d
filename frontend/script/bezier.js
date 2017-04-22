@@ -42,32 +42,90 @@ class Point {
 class BezierSurface {
     // potins in clock-wise, start from the left-up corner
     // 0 > 1 > 2 > 3
-    // ^           v
-    // 11          4
-    // ^           v
-    // 10          5
+    //             v
+    // 11>12 >13   4
+    // ^       v   v
+    // 10 15< 14   5
     // ^           v
     // 9 < 8 < 7 < 6
-    constructor(ctrl_pts, show_edge) {
+    constructor(n_samples, ctrl_pts, show_edge) {
+        this._n_samples = n_samples
         this._ctrl_pts = ctrl_pts
+        // add 12 to 15
+        this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[4].y))
+        this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[4].y))
+        this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[5].y))
+        this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[5].y))
+        this._idx_map = [0,  1,  2,  3,
+                        11, 12, 13, 4,
+                        10, 15, 14, 5,
+                        9,  8,  7,  6]
+        this._B = [1, 3, 3, 1]
+        // the show edge
         this._draw_edge = show_edge
     }
 
+    B(i, u) {
+        console.log(u + " " + i + " " + Math.pow(u, i))
+        return this._B[i] * Math.pow(u, i) * Math.pow(1 - u, 4 - i)
+    }
+
+    point(u, v) {
+        var p = {x: 0.0, y: 0.0}
+        var index = 0
+        for (var r = 0; r < 4; ++r) {
+            for (var c = 0; c < 4; ++c) {
+                var idx = this._idx_map[index++]
+                p.x += this.B(r, v) * this.B(c, u) * this._ctrl_pts[idx].x
+                p.y += this.B(r, v) * this.B(c, u) * this._ctrl_pts[idx].y
+                // console.log(this.B(r, v) + " " +  this.B(c, u))
+            }
+        }
+        console.log(p.x + " " + p.y)
+        return p
+    }
+
     draw(canvas) {
+        console.log('bezier')
         for (var s = 0; s < this._draw_edge.length; ++s) {
             var i = this._draw_edge[s] * 3
             // draw the draw_edge[s]-th edge, start from point[i]
             dashedLineTo(canvas, this._ctrl_pts[i], this._ctrl_pts[i + 1])
             dashedLineTo(canvas, this._ctrl_pts[i + 2], this._ctrl_pts[(i + 3) % 12])
-            
-            lineTo(canvas, this._ctrl_pts[i], this._ctrl_pts[(i + 3) % 12])
+            // lineTo(canvas, this._ctrl_pts[i], this._ctrl_pts[(i + 3) % 12])
+            // draw one line
+            var samples = []
+            var u = 0, v = 0
+            var du = 0, dv = 0
+            if (this._draw_edge[s] == 0) {
+                du = 1 / this._n_samples
+            }
+            else if (this._draw_edge[s] == 1) {
+                u = 1
+                dv = 1 / this._n_samples
+            }
+            else if (this._draw_edge[s] == 2) {
+                v = 1
+                du = 1 / this._n_samples
+            }
+            else {
+                dv = 1 / this._n_samples
+            }
+            for (var i = 0; i < this._n_samples; ++i) {
+                samples.push(this.point(u, v))
+                u += du
+                v += dv
+            }
+            console.log(samples)
+            drawLines(canvas, samples)
         }
     }
 }
 
 class BezierSurfaces {
-    constructor(cols, rows, width, height) {
+    constructor(cols, rows, width, height, samples) {
         // add points
+        this._samples = samples
         this._width = width
         this._height = height
         this._cols = cols
@@ -139,7 +197,7 @@ class BezierSurfaces {
                 if (c < cols - 1)   show_edge.push(1)
                 if (r < rows - 1)   show_edge.push(2)
                 if (0 < c)          show_edge.push(3)
-                this._beziers.push(new BezierSurface(this.pick_pts(r, c), show_edge))
+                this._beziers.push(new BezierSurface(samples, this.pick_pts(r, c), show_edge))
             }
         }
     }
@@ -152,9 +210,10 @@ class BezierSurfaces {
         canvas.strokeRect(0, 0, this._width, this._height)
         // canvas.lineWidth = old_lw
         // inner
-        for (var i = 0; i < this._beziers.length; ++i) {
-            this._beziers[i].draw(canvas)
-        }
+        // for (var i = 0; i < this._beziers.length; ++i) {
+        //     this._beziers[i].draw(canvas)
+        // }
+        this._beziers[0].draw(canvas)
 
         for (var i = 0; i < this._ctrl_pts.length; ++i) {
             this._ctrl_pts[i].draw(canvas)

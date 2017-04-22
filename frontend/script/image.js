@@ -246,3 +246,14 @@ var drawPoint = function (canvas, p) {
     canvas.fillRect(x - 3, y - 3, 6, 6)
 
 }
+
+var drawLines = function (canvas, samples) {
+    canvas.strokeStyle="RGBA(150,150,150, 0.5)";  
+
+    canvas.beginPath();
+    canvas.moveTo(samples[0].x, samples[0].y);   
+    for(var i = 1; i < samples.length; ++i) {  
+        canvas.lineTo(samples[i].x, samples[i].y);           
+    }  
+    canvas.stroke();  
+}

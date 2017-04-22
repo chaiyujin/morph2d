@@ -23,12 +23,12 @@ $(document).ready(() => {
     {
         var c = $("#sourceCanvas")[0]
         g_configuration.source_canvas = c.getContext("2d")
-        g_configuration.source_surface = new BezierSurfaces(4, 4, default_canvas_size.width, default_canvas_size.height)
+        g_configuration.source_surface = new BezierSurfaces(4, 4, default_canvas_size.width, default_canvas_size.height, 3)
     }
     {
         var c = $("#targetCanvas")[0]
         g_configuration.target_canvas =c.getContext("2d")
-        g_configuration.target_surface = new BezierSurfaces(5, 5, default_canvas_size.width, default_canvas_size.height)
+        g_configuration.target_surface = new BezierSurfaces(5, 5, default_canvas_size.width, default_canvas_size.height, 3)
         $("#targetCanvas").hide()
     }
     {
