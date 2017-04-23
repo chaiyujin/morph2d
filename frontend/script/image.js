@@ -241,7 +241,7 @@ var drawPoint = function (canvas, p) {
     var y = p.y
 
     canvas.fillStyle="RGBA(0,0,0, 0.5)"
-    canvas.fillRect(x - 5, y - 5, 10, 10)
+    canvas.fillRect(x - 4, y - 4, 8, 8)
     canvas.fillStyle="RGBA(150,150,150, 0.5)"
     canvas.fillRect(x - 3, y - 3, 6, 6)
 

@@ -7,7 +7,7 @@
 // 2.   However, the control points on border cannot be modified
 // 3.   The surface is drawed with html5 canvas
 
-let threshold_sqr_len = 50
+let threshold_sqr_len = 36
 
 class Point {
     constructor(x, y) {
@@ -39,6 +39,24 @@ class Point {
     }
 }
 
+class PointMoveCommand {
+    constructor(point, old_pos, new_pos) {
+        this._point = point
+        this._old_pos = old_pos
+        this._new_pos = new_pos
+    }
+
+    exec() {
+        this._point.move(this._new_pos.x, this._new_pos.y)
+        g_configuration.draw()
+    }
+
+    undo() {
+        this._point.move(this._old_pos.x, this._old_pos.y)
+        g_configuration.draw()
+    }
+}
+
 class BezierSurface {
     // potins in clock-wise, start from the left-up corner
     // 0 > 1 > 2 > 3
@@ -48,7 +66,7 @@ class BezierSurface {
     // 10 15< 14   5
     // ^           v
     // 9 < 8 < 7 < 6
-    constructor(n_samples, ctrl_pts, show_edge) {
+    constructor(surfs, n_samples, ctrl_pts, show_edge) {
         this._n_samples = n_samples
         this._ctrl_pts = ctrl_pts
         // add 12 to 15
@@ -56,6 +74,10 @@ class BezierSurface {
         this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[4].y))
         this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[5].y))
         this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[5].y))
+        // for (var i = 12; i < 16; ++i) {
+        //     surfs._ctrl_pts.push(this._ctrl_pts[i])
+        // }
+
         this._idx_map = [0,  1,  2,  3,
                         11, 12, 13, 4,
                         10, 15, 14, 5,
@@ -83,6 +105,7 @@ class BezierSurface {
     }
 
     draw(canvas) {
+        // border
         for (var s = 0; s < this._draw_edge.length; ++s) {
             var i = this._draw_edge[s] * 3
             // draw the draw_edge[s]-th edge, start from point[i]
@@ -113,7 +136,53 @@ class BezierSurface {
                 v += dv
             }
             drawLines(canvas, samples)
-
+        }
+        // inner
+        {
+            {
+                var samples = []
+                var u = 1 / 3, v = 0
+                var du = 0, dv = 1 / (this._n_samples - 1)
+                for (var i = 0; i < this._n_samples; ++i) {
+                    samples.push(this.point(u, v))
+                    u += du
+                    v += dv
+                }
+                drawLines(canvas, samples)
+            }
+            {
+                var samples = []
+                var u = 2 / 3, v = 0
+                var du = 0, dv = 1 / (this._n_samples - 1)
+                for (var i = 0; i < this._n_samples; ++i) {
+                    samples.push(this.point(u, v))
+                    u += du
+                    v += dv
+                }
+                drawLines(canvas, samples)
+            }
+            {
+                var samples = []
+                var u = 0, v = 1 / 3
+                var dv = 0, du = 1 / (this._n_samples - 1)
+                for (var i = 0; i < this._n_samples; ++i) {
+                    samples.push(this.point(u, v))
+                    u += du
+                    v += dv
+                }
+                drawLines(canvas, samples)
+            }
+            {
+                var samples = []
+                var u = 0, v = 2 / 3
+                var dv = 0, du = 1 / (this._n_samples - 1)
+                for (var i = 0; i < this._n_samples; ++i) {
+                    samples.push(this.point(u, v))
+                    u += du
+                    v += dv
+                }
+                drawLines(canvas, samples)
+            }
         }
     }
 }
@@ -122,6 +191,7 @@ class BezierSurfaces {
     constructor(cols, rows, width, height, samples) {
         // add points
         this._canvas = null
+        this._clicked_old_pos = null
         this._clicked = null
         this._samples = samples
         this._width = width
@@ -195,7 +265,7 @@ class BezierSurfaces {
                 if (c < cols - 1)   show_edge.push(1)
                 if (r < rows - 1)   show_edge.push(2)
                 if (0 < c)          show_edge.push(3)
-                this._beziers.push(new BezierSurface(samples, this.pick_pts(r, c), show_edge))
+                this._beziers.push(new BezierSurface(this, samples, this.pick_pts(r, c), show_edge))
             }
         }
     }
@@ -249,16 +319,22 @@ class BezierSurfaces {
 
     mousedown(x, y) {
         this._clicked = null
+        this._clicked_old_pos = null
         for (var i = 0; i < this._ctrl_pts.length; ++i) {
             if (this._ctrl_pts[i].fit(x, y)) {
                 this._clicked = this._ctrl_pts[i];
+                this._clicked_old_pos = { x: this._clicked.x, y: this._clicked.y }
                 break;
             }
         }
     }
 
     mouseup(x, y) {
-        this._clicked = null
+        if (this._clicked != null) {
+            Commands.push(new PointMoveCommand(this._clicked, this._clicked_old_pos, {x: x, y: y}))
+            this._clicked = null
+            this._clicked_old_pos = null
+        }
     }
 
     mousemove(x, y) {
