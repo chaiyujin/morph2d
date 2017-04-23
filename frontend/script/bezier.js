@@ -7,7 +7,7 @@
 // 2.   However, the control points on border cannot be modified
 // 3.   The surface is drawed with html5 canvas
 
-let threshold_sqr_len = 2 * 2
+let threshold_sqr_len = 50
 
 class Point {
     constructor(x, y) {
@@ -66,8 +66,7 @@ class BezierSurface {
     }
 
     B(i, u) {
-        console.log(u + " " + i + " " + Math.pow(u, i))
-        return this._B[i] * Math.pow(u, i) * Math.pow(1 - u, 4 - i)
+        return this._B[i] * Math.pow(u, i) * Math.pow(1 - u, 3 - i)
     }
 
     point(u, v) {
@@ -78,15 +77,12 @@ class BezierSurface {
                 var idx = this._idx_map[index++]
                 p.x += this.B(r, v) * this.B(c, u) * this._ctrl_pts[idx].x
                 p.y += this.B(r, v) * this.B(c, u) * this._ctrl_pts[idx].y
-                // console.log(this.B(r, v) + " " +  this.B(c, u))
             }
         }
-        console.log(p.x + " " + p.y)
         return p
     }
 
     draw(canvas) {
-        console.log('bezier')
         for (var s = 0; s < this._draw_edge.length; ++s) {
             var i = this._draw_edge[s] * 3
             // draw the draw_edge[s]-th edge, start from point[i]
@@ -98,26 +94,26 @@ class BezierSurface {
             var u = 0, v = 0
             var du = 0, dv = 0
             if (this._draw_edge[s] == 0) {
-                du = 1 / this._n_samples
+                du = 1 / (this._n_samples - 1)
             }
             else if (this._draw_edge[s] == 1) {
                 u = 1
-                dv = 1 / this._n_samples
+                dv = 1 / (this._n_samples - 1)
             }
             else if (this._draw_edge[s] == 2) {
                 v = 1
-                du = 1 / this._n_samples
+                du = 1 / (this._n_samples - 1)
             }
             else {
-                dv = 1 / this._n_samples
+                dv = 1 / (this._n_samples - 1)
             }
             for (var i = 0; i < this._n_samples; ++i) {
                 samples.push(this.point(u, v))
                 u += du
                 v += dv
             }
-            console.log(samples)
             drawLines(canvas, samples)
+
         }
     }
 }
@@ -125,6 +121,8 @@ class BezierSurface {
 class BezierSurfaces {
     constructor(cols, rows, width, height, samples) {
         // add points
+        this._canvas = null
+        this._clicked = null
         this._samples = samples
         this._width = width
         this._height = height
@@ -203,6 +201,8 @@ class BezierSurfaces {
     }
 
     draw(canvas) {
+        if (!canvas) return
+        if (this._canvas == null) this._canvas = canvas
         // border
         // var old_lw = canvas.lineWidth
         canvas.lineWidth = 2
@@ -210,10 +210,9 @@ class BezierSurfaces {
         canvas.strokeRect(0, 0, this._width, this._height)
         // canvas.lineWidth = old_lw
         // inner
-        // for (var i = 0; i < this._beziers.length; ++i) {
-        //     this._beziers[i].draw(canvas)
-        // }
-        this._beziers[0].draw(canvas)
+        for (var i = 0; i < this._beziers.length; ++i) {
+            this._beziers[i].draw(canvas)
+        }
 
         for (var i = 0; i < this._ctrl_pts.length; ++i) {
             this._ctrl_pts[i].draw(canvas)
@@ -247,4 +246,59 @@ class BezierSurfaces {
 
         return pts
     }
+
+    mousedown(x, y) {
+        this._clicked = null
+        for (var i = 0; i < this._ctrl_pts.length; ++i) {
+            if (this._ctrl_pts[i].fit(x, y)) {
+                this._clicked = this._ctrl_pts[i];
+                break;
+            }
+        }
+    }
+
+    mouseup(x, y) {
+        this._clicked = null
+    }
+
+    mousemove(x, y) {
+        if (this._clicked) {
+            this._clicked.move(x, y)
+            g_configuration.draw()
+        }
+    }
+}
+
+
+var mousedown_callback = (event) => {
+    var surface = null;
+    if (event.target.id == 'sourceCanvas')
+        surface = g_configuration.source_surface
+    else if (event.target.id == 'targetCanvas')
+        surface = g_configuration.target_surface
+    
+    if (surface)
+        surface.mousedown(event.offsetX, event.offsetY)
+}
+
+var mouseup_callback = (event) => {
+    var surface = null;
+    if (event.target.id == 'sourceCanvas')
+        surface = g_configuration.source_surface
+    else if (event.target.id == 'targetCanvas')
+        surface = g_configuration.target_surface
+    
+    if (surface)
+        surface.mouseup(event.offsetX, event.offsetY)
+}
+
+var mousemove_callback = (event) => {
+    var surface = null;
+    if (event.target.id == 'sourceCanvas')
+        surface = g_configuration.source_surface
+    else if (event.target.id == 'targetCanvas')
+        surface = g_configuration.target_surface
+    
+    if (surface)
+        surface.mousemove(event.offsetX, event.offsetY)
 }

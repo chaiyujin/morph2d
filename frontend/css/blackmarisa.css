@@ -11,6 +11,10 @@ body {
     vertical-align:  middle;
 }
 
+canvas {
+    cursor: pointer;
+}
+
 .left-bar {
     z-index: 5;
     position: absolute;
