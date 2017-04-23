@@ -185,6 +185,22 @@ class BezierSurface {
             }
         }
     }
+
+    // interplate to s1, at t, result is surf
+    // interplate_to(s1, t, surf) {
+    //     if (!surf) {
+    //         var pts = []
+    //         for (var i = 0; i < 12; ++i) {
+    //             pts.push(new Point(0, 0))
+    //         }
+    //         surf = new BezierSurface(null, this._n_samples, pts, this._draw_edge)
+    //     }
+    //     for (var i = 0; i < this._ctrl_pts.length; ++i) {
+    //         surf._ctrl_pts[i].x = this._ctrl_pts[i].x * (1 - t) + s1._ctrl_pts[i].x * t
+    //         surf._ctrl_pts[i].y = this._ctrl_pts[i].y * (1 - t) + s1._ctrl_pts[i].y * t
+    //     }
+    //     return surf
+    // }
 }
 
 class BezierSurfaces {
@@ -343,6 +359,17 @@ class BezierSurfaces {
             g_configuration.draw()
         }
     }
+
+    interplate_to(s1, t, surfs) {
+        if (!surfs) {
+            surfs = new BezierSurfaces(this._cols, this._rows, this._width, this._height, this._samples)
+        }
+        for (var i = 0; i < this._ctrl_pts.length; ++i) {
+            surfs._ctrl_pts[i].x = this._ctrl_pts[i].x * (1 - t) + s1._ctrl_pts[i].x * t
+            surfs._ctrl_pts[i].y = this._ctrl_pts[i].y * (1 - t) + s1._ctrl_pts[i].y * t
+        }
+        return surfs
+    }
 }
 
 
@@ -377,4 +404,21 @@ var mousemove_callback = (event) => {
     
     if (surface)
         surface.mousemove(event.offsetX, event.offsetY)
+}
+
+
+var interplate_bezier_surfaces = (source, target, steps) => {
+    if (steps <= 0) return
+    var delta_t = 1 / steps
+    var ret = []
+    var t = delta_t
+    for (var i = 0; i < steps; ++i) {
+        var tmp = null
+        tmp = source.interplate_to(
+            target, t, tmp
+        )
+        t += delta_t
+        ret.push(tmp)
+    }
+    return ret
 }
