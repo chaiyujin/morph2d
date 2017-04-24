@@ -240,11 +240,19 @@ var drawPoint = function (canvas, p) {
     var x = p.x
     var y = p.y
 
-    canvas.fillStyle="RGBA(0,0,0, 0.5)"
-    canvas.fillRect(x - 4, y - 4, 8, 8)
-    canvas.fillStyle="RGBA(150,150,150, 0.5)"
-    canvas.fillRect(x - 3, y - 3, 6, 6)
+    if (!p._small) {
+        canvas.fillStyle="RGBA(0,0,0, 0.5)"
+        canvas.fillRect(x - 4, y - 4, 8, 8)
+        canvas.fillStyle="RGBA(150,150,150, 0.5)"
+        canvas.fillRect(x - 3, y - 3, 6, 6)
+    }
+    else {
+        canvas.fillStyle="RGBA(0,0,0, 0.5)"
+        canvas.fillRect(x - 2, y - 2, 4, 4)
+        canvas.fillStyle="RGBA(150,150,150, 0.5)"
+        canvas.fillRect(x - 1, y - 1, 2, 2)
 
+    }
 }
 
 var drawLines = function (canvas, samples, inner) {

@@ -8,14 +8,16 @@
 // 3.   The surface is drawed with html5 canvas
 
 let threshold_sqr_len = 36  // threshold to fit point
+let threshold_sqr_len_small = 25
 let MAX_EPS = 100000        // eps about uv reverse map
 let RESOLUTION_SCALE = 3    // du, dv resolution for uv reverse map
 var fs = require('fs')
 
 class Point {
-    constructor(x, y) {
+    constructor(x, y, small) {
         this._x = x
         this._y = y
+        this._small = small
     }
 
     get x() { return this._x }
@@ -27,16 +29,26 @@ class Point {
     fit(nx, ny) {
         var sqr_len = (nx - this.x) * (nx - this.x) + 
                       (ny - this.y) * (ny - this.y)
-        if (sqr_len < threshold_sqr_len)
-            return true
-        else
-            return false
+        if (!this._small) {
+            if (sqr_len < threshold_sqr_len) return true
+            else return false
+        }
+        else {
+            if (sqr_len < threshold_sqr_len_small) return true
+            else return false
+        }
     }
 
     move(nx, ny) {
         say_message('Move point to [' + nx + ', ' + ny + '].')
         this.x = nx
         this.y = ny
+    }
+
+    move_delta(dx, dy) {
+        this.x += dx
+        this.y += dy
+        say_message('Move point to [' + this.x  + ', ' + this.y + '].')
     }
 
     draw(canvas) {
@@ -74,6 +86,30 @@ class PointMoveCommand {
     }
 }
 
+class PointBatchMoveCommand {
+    constructor(father, batch, delta) {
+        this._father = father
+        this._batch = batch
+        this._delta = delta
+    }
+
+    exec() {
+        for (var i = 0; i < this._batch.length; ++i) {
+            this._batch[i].move_delta(this._delta.x, this._delta.y)
+        }
+        this._father._reverse_updated = false
+        g_configuration.draw()
+    }
+
+    undo() {
+        for (var i = 0; i < this._batch.length; ++i) {
+            this._batch[i].move_delta(-this._delta.x, -this._delta.y)
+        }
+        this._father._reverse_updated = false
+        g_configuration.draw()
+    }
+}
+
 class BezierSurface {
     // potins in clock-wise, start from the left-up corner
     // 0 > 1 > 2 > 3
@@ -83,15 +119,17 @@ class BezierSurface {
     // 10 15< 14   5
     // ^           v
     // 9 < 8 < 7 < 6
-    constructor(n_samples, ctrl_pts, show_edge) {
+    constructor(father, n_samples, ctrl_pts, show_edge) {
         this._n_samples = n_samples
         this._ctrl_pts = ctrl_pts
         // add 12 to 15
-        this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[4].y))
-        this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[4].y))
-        this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[5].y))
-        this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[5].y))
-
+        this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[4].y, true))
+        this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[4].y, true))
+        this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[5].y, true))
+        this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[5].y, true))
+        for (var i = 12; i < 16; ++i) {
+            father._ctrl_pts.push(this._ctrl_pts[i])
+        }
         this._idx_map = [0,  1,  2,  3,
                         11, 12, 13, 4,
                         10, 15, 14, 5,
@@ -204,9 +242,11 @@ class BezierSurfaces {
         this._reverse_map = null
         this._reverse_updated = false
         // add points
-        this._canvas = null
         this._clicked_old_pos = null
         this._clicked = null
+        this._batch_select = []
+        this._batch_rect = null
+        this._canvas = null
         this._samples = samples
         this._width = width
         this._height = height
@@ -281,7 +321,7 @@ class BezierSurfaces {
                 if (c < cols - 1)   show_edge.push(1)
                 if (r < rows - 1)   show_edge.push(2)
                 if (0 < c)          show_edge.push(3)
-                this._beziers.push(new BezierSurface(samples, this.pick_pts(r, c), show_edge))
+                this._beziers.push(new BezierSurface(this, samples, this.pick_pts(r, c), show_edge))
             }
         }
     }
@@ -292,6 +332,8 @@ class BezierSurfaces {
         // add points
         this._clicked_old_pos = null
         this._clicked = null
+        this._batch_select = []
+        this._batch_rect = null
         this._samples = dst._samples
         this._width = dst._width
         this._height = dst._height
@@ -329,6 +371,13 @@ class BezierSurfaces {
         for (var i = 0; i < this._ctrl_pts.length; ++i) {
             this._ctrl_pts[i].draw(canvas)
         }
+
+        if (this._batch_rect) {
+            canvas.fillStyle="RGBA(0, 0, 150, 0.5)"
+            canvas.fillRect(this._batch_rect.old.x, this._batch_rect.old.y,
+                            this._batch_rect.new.x - this._batch_rect.old.x,
+                            this._batch_rect.new.y - this._batch_rect.old.y)
+        }
     }
 
     pick_pts(row, col) {
@@ -362,27 +411,102 @@ class BezierSurfaces {
     mousedown(x, y) {
         this._clicked = null
         this._clicked_old_pos = null
-        for (var i = 0; i < this._ctrl_pts.length; ++i) {
-            if (this._ctrl_pts[i].fit(x, y)) {
-                this._clicked = this._ctrl_pts[i];
-                this._clicked_old_pos = { x: this._clicked.x, y: this._clicked.y }
-                break;
+        if (this._batch_select.length == 0) {
+            for (var i = 0; i < this._ctrl_pts.length; ++i) {
+                if (this._ctrl_pts[i].fit(x, y)) {
+                    this._clicked = this._ctrl_pts[i];
+                    this._clicked_old_pos = { x: this._clicked.x, y: this._clicked.y }
+                    break;
+                }
+            }
+        }
+        // batch mode
+        if (!this._clicked) {
+            if (this._batch_select.length == 0) {
+                // select
+                this._batch_select = []
+                this._batch_rect = {
+                    old: {x: x, y: y},
+                    new: {x: x, y: y}
+                }
+            }
+            else {
+                // move
+                // this._clicked_old_pos = {x: x, y: y}
+                // move
+                Commands.push(new PointBatchMoveCommand(this, this._batch_select, {
+                    x: x - this._batch_move_old_pos.x,
+                    y: y - this._batch_move_old_pos.y
+                }))
+                this._batch_select = []
+                this._batch_rect = null
+                this._clicked_old_pos = null
+                this._batch_move_old_pos = null
             }
         }
     }
 
     mouseup(x, y) {
-        if (this._clicked != null) {
+        if (this._clicked) {
             Commands.push(new PointMoveCommand(this, this._clicked, this._clicked_old_pos, {x: x, y: y}))
             this._clicked = null
             this._clicked_old_pos = null
         }
+        else if (this._batch_rect) {
+            if (!this._clicked_old_pos) {
+                // select
+                this._clicked_old_pos = {x: x, y: y}
+                this._batch_move_old_pos = {x: x, y: y}
+            }
+            else {
+                this._batch_select = []
+                this._batch_rect = null
+                this._clicked_old_pos = null
+                this._batch_move_old_pos = null
+            }
+        }
+        g_configuration.draw()
     }
 
     mousemove(x, y) {
         if (this._clicked) {
             this._clicked.move(x, y)
             this._reverse_updated = false
+            g_configuration.draw()
+        }
+        else if (this._batch_rect) {
+            if (!this._clicked_old_pos) {
+                // select
+                this._batch_rect.new.x = x
+                this._batch_rect.new.y = y
+                var x0 = Math.round(this._batch_rect.old.x), x1 = Math.round(this._batch_rect.new.x),
+                    y0 = Math.round(this._batch_rect.old.y), y1 = Math.round(this._batch_rect.new.y)
+                if (x0 > x1) { var t = x0; x0 = x1; x1 = t }
+                if (y0 > y1) { var t = y0; y0 = y1; y1 = t }
+                this._batch_select = []
+                for (var i = 0; i < this._ctrl_pts.length; ++i) {
+                    var x = Math.round(this._ctrl_pts[i].x),
+                        y = Math.round(this._ctrl_pts[i].y)
+                    if (x0 <= x && x <= x1 && y0 < y && y <= y1) {
+                        this._batch_select.push(this._ctrl_pts[i])
+                    }
+                }
+            }
+            else {
+                // move
+                var dx = x - this._clicked_old_pos.x
+                var dy = y - this._clicked_old_pos.y
+                this._batch_rect.old.x += dx
+                this._batch_rect.old.y += dy
+                this._batch_rect.new.x += dx
+                this._batch_rect.new.y += dy
+                for (var i = 0; i < this._batch_select.length; ++i) {
+                    this._batch_select[i].x += dx
+                    this._batch_select[i].y += dy
+                }
+                this._clicked_old_pos.x = x
+                this._clicked_old_pos.y = y
+            }
             g_configuration.draw()
         }
     }

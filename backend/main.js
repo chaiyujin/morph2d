@@ -16,7 +16,7 @@ function createWindow() {
     }))
 
     // open dev tools
-    // Global.win.webContents.openDevTools()
+    Global.win.webContents.openDevTools()
 
     Global.win.on('closed', () => {
         Global.win = null
