@@ -22,6 +22,7 @@ $(document).ready(() => {
         
         list = interplate_bezier_surfaces(g_configuration.source_surface, g_configuration.target_surface, 10)
         g_configuration.source_surface = list[0]
+        g_configuration.source_surface.update_reverse_map()
         g_configuration.draw()
     })
     g_configuration = new Configuration()

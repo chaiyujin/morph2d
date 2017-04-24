@@ -8,6 +8,8 @@
 // 3.   The surface is drawed with html5 canvas
 
 let threshold_sqr_len = 36
+let MAX_EPS = 100000
+let RESOLUTION_SCALE = 3
 
 class Point {
     constructor(x, y) {
@@ -186,25 +188,33 @@ class BezierSurface {
         }
     }
 
-    // interplate to s1, at t, result is surf
-    // interplate_to(s1, t, surf) {
-    //     if (!surf) {
-    //         var pts = []
-    //         for (var i = 0; i < 12; ++i) {
-    //             pts.push(new Point(0, 0))
-    //         }
-    //         surf = new BezierSurface(null, this._n_samples, pts, this._draw_edge)
-    //     }
-    //     for (var i = 0; i < this._ctrl_pts.length; ++i) {
-    //         surf._ctrl_pts[i].x = this._ctrl_pts[i].x * (1 - t) + s1._ctrl_pts[i].x * t
-    //         surf._ctrl_pts[i].y = this._ctrl_pts[i].y * (1 - t) + s1._ctrl_pts[i].y * t
-    //     }
-    //     return surf
-    // }
+    update_reverse_map(map, duv, width, height) {
+        var du = duv.du, dv = duv.dv
+        for (var u = 0; u <= 1; u += du) {
+            for (var v = 0; v <= 1; v += dv) {
+                var point = this.point(u, v)
+                var p = {x: Math.round(point.x), y: Math.round(point.y)}
+                var eps = Math.abs(p.x - point.x) + Math.abs(p.y - point.y)
+                var idx = width * p.y + p.x
+                if (p.y >= height || p.x >= width) {
+                    // console.log(u + ' ' + v + ' ' + p.x + ' '+ p.y)
+                    continue
+                }
+            
+                if (map[idx].eps > eps) {
+                    map[idx].u = u
+                    map[idx].v = v
+                    map[idx].eps = eps
+                }
+            }
+        }
+    }
 }
 
 class BezierSurfaces {
     constructor(cols, rows, width, height, samples) {
+        // reverse map
+        this._reverse_map = null
         // add points
         this._canvas = null
         this._clicked_old_pos = null
@@ -369,6 +379,48 @@ class BezierSurfaces {
             surfs._ctrl_pts[i].y = this._ctrl_pts[i].y * (1 - t) + s1._ctrl_pts[i].y * t
         }
         return surfs
+    }
+
+    get reverse_map() { return this._reverse_map }
+    update_reverse_map() {
+        console.log("reverse")
+        // new reverse_map
+        if (!this._reverse_map) {
+            this._reverse_map = []
+            for (var y = 0; y < this._height; ++y) {
+                for (var x = 0; x < this._width; ++x) {
+                    this._reverse_map.push({u: 0, v: 0, eps: MAX_EPS})
+                }
+            }
+        }
+        // update
+        var du = this._cols / this._width / RESOLUTION_SCALE
+        var dv = this._rows / this._height / RESOLUTION_SCALE
+        for (var i = 0; i < this._beziers.length; ++i) {
+            this._beziers[i].update_reverse_map(this._reverse_map, {du: du, dv: dv}, this._width, this._height)
+        }
+        // check each (x, y) has (u, v)
+        var index = 0
+        for (var y = 0; y < this._height; ++y) {
+            for (var x = 0; x < this._width; ++x) {
+                if (this._reverse_map[index].eps >= MAX_EPS) {
+                    // interplate
+                    var u = null, l = null
+                    if (x > 0) { l = this._reverse_map[index - 1] }
+                    if (y > 0) { u = this._reverse_map[index - this._width] }
+                    if (!u) u = l
+                    if (!l) l = u
+                    // impossible
+                    if (!u && !l) alert('Error in reverse map!')
+                    this._reverse_map[index].u = (l.u + u.u) / 2
+                    this._reverse_map[index].v = (l.v + u.v) / 2
+                    this._reverse_map[index].eps = (l.eps + u.eps) / 2
+                }
+                ++index
+            }
+        }
+        
+        console.log("reverse done")
     }
 }
 
