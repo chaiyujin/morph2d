@@ -151,7 +151,7 @@ class BezierSurface {
                 u += du
                 v += dv
             }
-            drawLines(canvas, samples)
+            drawLines(canvas, samples, false)
         }
         // inner
         for (var u = 0; u < 1; u += 1 / 3) {
@@ -170,7 +170,7 @@ class BezierSurface {
                     tu += du
                     tv += dv
                 }
-                drawLines(canvas, samples)
+                drawLines(canvas, samples, true)
             }
         }
     }

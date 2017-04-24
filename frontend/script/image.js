@@ -247,8 +247,11 @@ var drawPoint = function (canvas, p) {
 
 }
 
-var drawLines = function (canvas, samples) {
-    canvas.strokeStyle="RGBA(150,150,150, 0.7)";  
+var drawLines = function (canvas, samples, inner) {
+    if (inner)
+        canvas.strokeStyle="RGBA(150,150,150, 0.5)";  
+    else
+        canvas.strokeStyle="RGBA(0,0,0, 1)";  
 
     canvas.beginPath();
     canvas.moveTo(samples[0].x, samples[0].y);   
