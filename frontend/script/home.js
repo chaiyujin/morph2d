@@ -61,7 +61,9 @@ $(document).ready(() => {
     {
         var c = $("#sourceCanvas")[0]
         g_configuration.source_canvas = c.getContext("2d")
-        g_configuration.source_surface = new BezierSurfaces(4, 4, default_canvas_size.width, default_canvas_size.height, 20)
+        g_configuration.source_surface = new BezierSurfaces(6, 7, default_canvas_size.width, default_canvas_size.height, 20)
+        $('input[name="rows"]').val(g_configuration.source_surface._rows)
+        $('input[name="cols"]').val(g_configuration.source_surface._cols)
         // add the click event
         $("#sourceCanvas").mousedown(mousedown_callback)
         $("#sourceCanvas").mouseup(mouseup_callback)
@@ -70,7 +72,7 @@ $(document).ready(() => {
     {
         var c = $("#targetCanvas")[0]
         g_configuration.target_canvas =c.getContext("2d")
-        g_configuration.target_surface = new BezierSurfaces(4, 4, default_canvas_size.width, default_canvas_size.height, 20)
+        g_configuration.target_surface = new BezierSurfaces(6, 7, default_canvas_size.width, default_canvas_size.height, 20)
         $("#targetCanvas").mousedown(mousedown_callback)
         $("#targetCanvas").mouseup(mouseup_callback)
         $("#targetCanvas").mousemove(mousemove_callback)
