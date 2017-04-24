@@ -32,6 +32,7 @@ class Point {
     }
 
     move(nx, ny) {
+        say_message('Move point to [' + nx + ', ' + ny + '].')
         this.x = nx
         this.y = ny
     }
@@ -42,7 +43,8 @@ class Point {
 }
 
 class PointMoveCommand {
-    constructor(point, old_pos, new_pos) {
+    constructor(father, point, old_pos, new_pos) {
+        this._father = father
         this._point = point
         this._old_pos = old_pos
         this._new_pos = new_pos
@@ -50,11 +52,13 @@ class PointMoveCommand {
 
     exec() {
         this._point.move(this._new_pos.x, this._new_pos.y)
+        this._father._reverse_updated = false
         g_configuration.draw()
     }
 
     undo() {
         this._point.move(this._old_pos.x, this._old_pos.y)
+        this._father._reverse_updated = false
         g_configuration.draw()
     }
 }
@@ -188,7 +192,7 @@ class BezierSurface {
         }
     }
 
-    update_reverse_map(map, duv, width, height) {
+    update_reverse_map(index, map, duv, width, height) {
         var du = duv.du, dv = duv.dv
         for (var u = 0; u <= 1; u += du) {
             for (var v = 0; v <= 1; v += dv) {
@@ -200,10 +204,15 @@ class BezierSurface {
                     // console.log(u + ' ' + v + ' ' + p.x + ' '+ p.y)
                     continue
                 }
+                // if (u == 0 || v == 0) {
+                //     console.log(u + ' ' + v + ' ' + p.x + ' '+ p.y)
+
+                // }
             
                 if (map[idx].eps > eps) {
                     map[idx].u = u
                     map[idx].v = v
+                    map[idx].idx = index
                     map[idx].eps = eps
                 }
             }
@@ -215,6 +224,7 @@ class BezierSurfaces {
     constructor(cols, rows, width, height, samples) {
         // reverse map
         this._reverse_map = null
+        this._reverse_updated = false
         // add points
         this._canvas = null
         this._clicked_old_pos = null
@@ -357,7 +367,7 @@ class BezierSurfaces {
 
     mouseup(x, y) {
         if (this._clicked != null) {
-            Commands.push(new PointMoveCommand(this._clicked, this._clicked_old_pos, {x: x, y: y}))
+            Commands.push(new PointMoveCommand(this, this._clicked, this._clicked_old_pos, {x: x, y: y}))
             this._clicked = null
             this._clicked_old_pos = null
         }
@@ -366,6 +376,7 @@ class BezierSurfaces {
     mousemove(x, y) {
         if (this._clicked) {
             this._clicked.move(x, y)
+            this._reverse_updated = false
             g_configuration.draw()
         }
     }
@@ -381,15 +392,20 @@ class BezierSurfaces {
         return surfs
     }
 
+    point(idx, u, v) {
+        return this._beziers[idx].point(u, v)
+    }
+
     get reverse_map() { return this._reverse_map }
     update_reverse_map() {
+        if (this._reverse_updated == true) return
         console.log("reverse")
         // new reverse_map
         if (!this._reverse_map) {
             this._reverse_map = []
             for (var y = 0; y < this._height; ++y) {
                 for (var x = 0; x < this._width; ++x) {
-                    this._reverse_map.push({u: 0, v: 0, eps: MAX_EPS})
+                    this._reverse_map.push({u: 0, v: 0, idx: 0, eps: MAX_EPS})
                 }
             }
         }
@@ -397,7 +413,7 @@ class BezierSurfaces {
         var du = this._cols / this._width / RESOLUTION_SCALE
         var dv = this._rows / this._height / RESOLUTION_SCALE
         for (var i = 0; i < this._beziers.length; ++i) {
-            this._beziers[i].update_reverse_map(this._reverse_map, {du: du, dv: dv}, this._width, this._height)
+            this._beziers[i].update_reverse_map(i, this._reverse_map, {du: du, dv: dv}, this._width, this._height)
         }
         // check each (x, y) has (u, v)
         var index = 0
@@ -421,6 +437,7 @@ class BezierSurfaces {
         }
         
         console.log("reverse done")
+        this._reverse_updated = true
     }
 }
 
@@ -458,19 +475,71 @@ var mousemove_callback = (event) => {
         surface.mousemove(event.offsetX, event.offsetY)
 }
 
+// return a list of steps frames of interplated bezier surfaces 
+var interplate_bezier_surfaces = (source, target, t) => {
+   var tmp = null
+    tmp = source.interplate_to(
+        target, t, tmp
+    )     
+    return tmp
+}
 
-var interplate_bezier_surfaces = (source, target, steps) => {
-    if (steps <= 0) return
-    var delta_t = 1 / steps
-    var ret = []
-    var t = delta_t
-    for (var i = 0; i < steps; ++i) {
-        var tmp = null
-        tmp = source.interplate_to(
-            target, t, tmp
-        )
-        t += delta_t
-        ret.push(tmp)
+var interplate_canvas_according_to_bezier = (
+        source, source_beizer, 
+        target, target_bezier,
+        t, result) => {
+    var width = source_beizer._width, height = source_beizer._height
+    if (width != target_bezier._width || height != target_bezier._height) return
+    if (!result) return
+
+    var t_bezier = interplate_bezier_surfaces(source_beizer, target_bezier, t)
+    source_beizer.update_reverse_map()
+    target_bezier.update_reverse_map()
+    t_bezier.update_reverse_map()
+    var index = 0
+    for (var y = 0; y < height; ++y) {
+        for (var x = 0; x < width; ++x) {
+            var uv = t_bezier.reverse_map[index]
+            var ps = source_beizer.point(uv.idx, uv.u, uv.v)
+            var pt = target_bezier.point(uv.idx, uv.u, uv.v)
+            var img_idx = index * 4
+            var src_idx = (Math.round(ps.y) * width + Math.round(ps.x)) * 4
+            var dst_idx = (Math.round(pt.y) * width + Math.round(pt.x)) * 4
+            for (var k = 0; k < 4; ++k) {
+                result.data[img_idx + k] = source.data[src_idx + k] * (1 - t) + 
+                                           target.data[dst_idx + k] * t
+            }
+            ++index
+        }
     }
-    return ret
+    return result
+}
+
+var get_interplate_image_data = (t) => {
+    g_configuration.source.draw(g_configuration.source_canvas, 1)
+    g_configuration.target.draw(g_configuration.target_canvas, 1)
+    var source_data = g_configuration.source_canvas.getImageData(0, 0, default_canvas_size.width, default_canvas_size.height)
+    var target_data = g_configuration.target_canvas.getImageData(0, 0, default_canvas_size.width, default_canvas_size.height)
+    var result = g_configuration.source_canvas.createImageData(default_canvas_size.width, default_canvas_size.height)
+    result = interplate_canvas_according_to_bezier(
+        source_data,
+        g_configuration.source_surface,
+        target_data,
+        g_configuration.target_surface,
+        t, result
+    )    
+    g_configuration.draw()
+    return result
+}
+
+var generate_animation = (steps) => {
+    if (!g_configuration.source || !g_configuration.target) {
+        alert("Please choose source and target image first.")
+        return
+    }
+    for (var t = 0, i = 0; i <= steps; ++i, t += 1 / (steps)) {
+        var tmp = get_interplate_image_data(t)
+        g_hide_canvas.putImageData(tmp, 0, 0)
+        exportCanvasAsPNG('hideCanvas', "result_" + i + ".png")
+    }
 }
