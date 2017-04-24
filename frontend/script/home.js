@@ -19,7 +19,20 @@ ipcRenderer.on('redo', (event) => {
 /* init */
 $(document).ready(() => {
     $("#button").click(() => {
-        generate_animation(10)
+        var steps = parseInt($('input[name="steps"]').val())
+        if (isNaN(steps)) {
+            alert('Please enter a number for steps.')
+            return
+        }
+        else {
+            if (steps > 20) {
+                alert('Steps is larger than 20, which will take too long time.')
+                return
+            }
+            alert('Generate ' + steps + ' steps animation.')
+            generate_animation(steps)
+            say_message('Done!')
+        }
     })
     g_configuration = new Configuration()
     {

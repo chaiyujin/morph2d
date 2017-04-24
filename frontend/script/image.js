@@ -202,7 +202,7 @@ var dashedLineTo = function (canvas, p0, p1, pattern) {
     var toX = p1.x, toY = p1.y
     // default interval distance -> 5px  
     if (typeof pattern === "undefined") {  
-        pattern = 5;  
+        pattern = 2;  
     }  
   
     // calculate the delta x and delta y  
@@ -248,7 +248,7 @@ var drawPoint = function (canvas, p) {
 }
 
 var drawLines = function (canvas, samples) {
-    canvas.strokeStyle="RGBA(150,150,150, 0.5)";  
+    canvas.strokeStyle="RGBA(150,150,150, 0.7)";  
 
     canvas.beginPath();
     canvas.moveTo(samples[0].x, samples[0].y);   

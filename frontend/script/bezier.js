@@ -7,9 +7,9 @@
 // 2.   However, the control points on border cannot be modified
 // 3.   The surface is drawed with html5 canvas
 
-let threshold_sqr_len = 36
-let MAX_EPS = 100000
-let RESOLUTION_SCALE = 3
+let threshold_sqr_len = 36  // threshold to fit point
+let MAX_EPS = 100000        // eps about uv reverse map
+let RESOLUTION_SCALE = 3    // du, dv resolution for uv reverse map
 
 class Point {
     constructor(x, y) {
@@ -22,6 +22,7 @@ class Point {
     set x(v) { this._x = v }
     set y(v) { this._y = v }
 
+    // fit (nx, ny) to point
     fit(nx, ny) {
         var sqr_len = (nx - this.x) * (nx - this.x) + 
                       (ny - this.y) * (ny - this.y)
@@ -42,6 +43,8 @@ class Point {
     }
 }
 
+// the command to move point
+// to support exec and undo
 class PointMoveCommand {
     constructor(father, point, old_pos, new_pos) {
         this._father = father
@@ -72,7 +75,7 @@ class BezierSurface {
     // 10 15< 14   5
     // ^           v
     // 9 < 8 < 7 < 6
-    constructor(surfs, n_samples, ctrl_pts, show_edge) {
+    constructor(n_samples, ctrl_pts, show_edge) {
         this._n_samples = n_samples
         this._ctrl_pts = ctrl_pts
         // add 12 to 15
@@ -80,9 +83,6 @@ class BezierSurface {
         this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[4].y))
         this._ctrl_pts.push(new Point(this._ctrl_pts[2].x, this._ctrl_pts[5].y))
         this._ctrl_pts.push(new Point(this._ctrl_pts[1].x, this._ctrl_pts[5].y))
-        // for (var i = 12; i < 16; ++i) {
-        //     surfs._ctrl_pts.push(this._ctrl_pts[i])
-        // }
 
         this._idx_map = [0,  1,  2,  3,
                         11, 12, 13, 4,
@@ -115,27 +115,18 @@ class BezierSurface {
         for (var s = 0; s < this._draw_edge.length; ++s) {
             var i = this._draw_edge[s] * 3
             // draw the draw_edge[s]-th edge, start from point[i]
+            // draw control edge
             dashedLineTo(canvas, this._ctrl_pts[i], this._ctrl_pts[i + 1])
+            // dashedLineTo(canvas, this._ctrl_pts[i + 1], this._ctrl_pts[i + 2])
             dashedLineTo(canvas, this._ctrl_pts[i + 2], this._ctrl_pts[(i + 3) % 12])
-            // lineTo(canvas, this._ctrl_pts[i], this._ctrl_pts[(i + 3) % 12])
-            // draw one line
+            // draw bezier border
             var samples = []
             var u = 0, v = 0
             var du = 0, dv = 0
-            if (this._draw_edge[s] == 0) {
-                du = 1 / (this._n_samples - 1)
-            }
-            else if (this._draw_edge[s] == 1) {
-                u = 1
-                dv = 1 / (this._n_samples - 1)
-            }
-            else if (this._draw_edge[s] == 2) {
-                v = 1
-                du = 1 / (this._n_samples - 1)
-            }
-            else {
-                dv = 1 / (this._n_samples - 1)
-            }
+            if (this._draw_edge[s] == 0) { du = 1 / (this._n_samples - 1) }
+            else if (this._draw_edge[s] == 1) { u = 1; dv = 1 / (this._n_samples - 1) }
+            else if (this._draw_edge[s] == 2) { v = 1; du = 1 / (this._n_samples - 1) }
+            else { dv = 1 / (this._n_samples - 1) }
             for (var i = 0; i < this._n_samples; ++i) {
                 samples.push(this.point(u, v))
                 u += du
@@ -144,48 +135,21 @@ class BezierSurface {
             drawLines(canvas, samples)
         }
         // inner
-        {
-            {
+        for (var u = 0; u < 1; u += 1 / 3) {
+            for (var v = 0; v < 1; v += 1 / 3) {
+                if (u > 0 && v > 0) continue
+                if (u == 0 && v == 0) continue
+                // only inner part
+                var du = 0, dv = 0
+                if (u > 0) dv = 1 / (this._n_samples - 1)
+                if (v > 0) du = 1 / (this._n_samples - 1)
+
+                var tu = u, tv = v
                 var samples = []
-                var u = 1 / 3, v = 0
-                var du = 0, dv = 1 / (this._n_samples - 1)
                 for (var i = 0; i < this._n_samples; ++i) {
-                    samples.push(this.point(u, v))
-                    u += du
-                    v += dv
-                }
-                drawLines(canvas, samples)
-            }
-            {
-                var samples = []
-                var u = 2 / 3, v = 0
-                var du = 0, dv = 1 / (this._n_samples - 1)
-                for (var i = 0; i < this._n_samples; ++i) {
-                    samples.push(this.point(u, v))
-                    u += du
-                    v += dv
-                }
-                drawLines(canvas, samples)
-            }
-            {
-                var samples = []
-                var u = 0, v = 1 / 3
-                var dv = 0, du = 1 / (this._n_samples - 1)
-                for (var i = 0; i < this._n_samples; ++i) {
-                    samples.push(this.point(u, v))
-                    u += du
-                    v += dv
-                }
-                drawLines(canvas, samples)
-            }
-            {
-                var samples = []
-                var u = 0, v = 2 / 3
-                var dv = 0, du = 1 / (this._n_samples - 1)
-                for (var i = 0; i < this._n_samples; ++i) {
-                    samples.push(this.point(u, v))
-                    u += du
-                    v += dv
+                    samples.push(this.point(tu, tv))
+                    tu += du
+                    tv += dv
                 }
                 drawLines(canvas, samples)
             }
@@ -239,6 +203,8 @@ class BezierSurfaces {
         this._pts_on_cor = []
         this._beziers = []
         this._ctrl_pts = []
+        
+        // initialize
         var dx = width / (3 * cols)
         var dy = height / (3 * rows)
         // add points on rows
@@ -301,7 +267,7 @@ class BezierSurfaces {
                 if (c < cols - 1)   show_edge.push(1)
                 if (r < rows - 1)   show_edge.push(2)
                 if (0 < c)          show_edge.push(3)
-                this._beziers.push(new BezierSurface(this, samples, this.pick_pts(r, c), show_edge))
+                this._beziers.push(new BezierSurface(samples, this.pick_pts(r, c), show_edge))
             }
         }
     }

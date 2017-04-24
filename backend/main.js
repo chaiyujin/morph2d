@@ -7,7 +7,7 @@ var MyMenu = require('./utils/menu.js')
 
 // the function to create window
 function createWindow() {
-    Global.win = new BrowserWindow({width: 800, height: 600})
+    Global.win = new BrowserWindow({width: 1600, height: 900})
     
     Global.win.loadURL(url.format({
         pathname: path.join(__dirname, '../frontend/html/home.html'),
@@ -16,7 +16,7 @@ function createWindow() {
     }))
 
     // open dev tools
-    Global.win.webContents.openDevTools()
+    // Global.win.webContents.openDevTools()
 
     Global.win.on('closed', () => {
         Global.win = null
