@@ -8,7 +8,18 @@ var file_submenu = {
     submenu: [
         {
             label: 'Pick Image',
-            click: MyFile.pick_single_image
+            click: MyFile.pick_single_image,
+            accelerator: 'ctrl+i'
+        },
+        {
+            label: 'Save Bezier',
+            click: MyFile.save_bezier,
+            accelerator: 'ctrl+s'
+        },
+        {
+            label: 'Load Bezier',
+            click: MyFile.load_bezier,
+            accelerator: 'ctrl+d'
         }
     ]
 }

@@ -10,6 +10,7 @@
 let threshold_sqr_len = 36  // threshold to fit point
 let MAX_EPS = 100000        // eps about uv reverse map
 let RESOLUTION_SCALE = 3    // du, dv resolution for uv reverse map
+var fs = require('fs')
 
 class Point {
     constructor(x, y) {
@@ -40,6 +41,11 @@ class Point {
 
     draw(canvas) {
         drawPoint(canvas, this)
+    }
+
+    load(dst) {
+        this._x = dst._x
+        this._y = dst._y
     }
 }
 
@@ -93,6 +99,17 @@ class BezierSurface {
         this._B = [1, 3, 3, 1]
         // the show edge
         this._draw_edge = show_edge
+    }
+
+    load(dst) {
+        this._n_samples = dst._n_samples
+        // add 12 to 15
+        for (var i = 12; i < 16; ++i) {
+            this._ctrl_pts[i].load(dst._ctrl_pts[i])
+        }
+
+        // the show edge
+        this._draw_edge = dst._draw_edge
     }
 
     B(i, u) {
@@ -167,13 +184,8 @@ class BezierSurface {
                 var eps = Math.abs(p.x - point.x) + Math.abs(p.y - point.y)
                 var idx = width * p.y + p.x
                 if (p.y >= height || p.x >= width) {
-                    // console.log(u + ' ' + v + ' ' + p.x + ' '+ p.y)
                     continue
                 }
-                // if (u == 0 || v == 0) {
-                //     console.log(u + ' ' + v + ' ' + p.x + ' '+ p.y)
-
-                // }
             
                 if (map[idx].eps > eps) {
                     map[idx].u = u
@@ -271,6 +283,32 @@ class BezierSurfaces {
                 if (0 < c)          show_edge.push(3)
                 this._beziers.push(new BezierSurface(samples, this.pick_pts(r, c), show_edge))
             }
+        }
+    }
+
+    load(dst) {
+        this._reverse_map = dst._reverse_map
+        this._reverse_updated = dst._reverse_updated
+        // add points
+        this._clicked_old_pos = null
+        this._clicked = null
+        this._samples = dst._samples
+        this._width = dst._width
+        this._height = dst._height
+        this._cols = dst._cols
+        this._rows = dst._rows
+        for (var i = 0; i < this._pts_on_row.length; ++i) {
+            this._pts_on_row[i].load(dst._pts_on_row[i])
+        }
+        for (var i = 0; i < this._pts_on_col.length; ++i) {
+            this._pts_on_col[i].load(dst._pts_on_col[i])
+        }
+        for (var i = 0; i < this._pts_on_cor.length; ++i) {
+            this._pts_on_cor[i].load(dst._pts_on_cor[i])
+        }
+
+        for (var i = 0; i < this._beziers.length; ++i) {
+            this._beziers[i].load(dst._beziers[i])
         }
     }
 
@@ -513,4 +551,25 @@ var generate_animation = (steps) => {
         g_hide_canvas.putImageData(tmp, 0, 0)
         exportCanvasAsPNG('hideCanvas', "result_" + i + ".png")
     }
+}
+
+var save_bezier = (path) => {
+    var content = {
+        source: g_configuration.source_surface,
+        target: g_configuration.target_surface
+    }
+    fs.writeFile(path, JSON.stringify(content), function (err) {
+        if (err) throw err;
+        alert('Succeed to save beizer surfaces.')
+    });
+}
+
+var load_bezier = (path) => {
+    fs.readFile(path, function (err, bytes_read) {
+        if (err) throw err;
+        var data = JSON.parse(bytes_read);
+        g_configuration.source_surface.load(data.source)
+        g_configuration.target_surface.load(data.target)
+        g_configuration.draw()
+    });
 }

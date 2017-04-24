@@ -21,7 +21,6 @@ function createWindow() {
     Global.win.on('closed', () => {
         Global.win = null
     })
-    
 }
 
 /* main procedure */

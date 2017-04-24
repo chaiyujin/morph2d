@@ -16,6 +16,14 @@ ipcRenderer.on('redo', (event) => {
     Commands.redo()
 })
 
+ipcRenderer.on('save', (event, path) => {
+    save_bezier(path)
+})
+
+ipcRenderer.on('load', (event, path) => {
+    load_bezier(path)
+})
+
 /* init */
 $(document).ready(() => {
     $("#button").click(() => {
