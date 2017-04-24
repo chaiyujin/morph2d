@@ -568,6 +568,14 @@ var load_bezier = (path) => {
     fs.readFile(path, function (err, bytes_read) {
         if (err) throw err;
         var data = JSON.parse(bytes_read);
+        
+        Commands.clear()
+        g_configuration.source_surface = new BezierSurfaces(data.source._cols, data.source._rows, default_canvas_size.width, default_canvas_size.height, 20)
+        g_configuration.target_surface = new BezierSurfaces(data.target._cols, data.target._rows, default_canvas_size.width, default_canvas_size.height, 20)
+
+        $('input[name="rows"]').val(data.source._rows)
+        $('input[name="cols"]').val(data.source._cols)
+
         g_configuration.source_surface.load(data.source)
         g_configuration.target_surface.load(data.target)
         g_configuration.draw()

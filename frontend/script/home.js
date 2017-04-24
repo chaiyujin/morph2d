@@ -42,6 +42,21 @@ $(document).ready(() => {
             say_message('Done!')
         }
     })
+    $("#size_btn").click(() => {
+        var rows = parseInt($('input[name="rows"]').val())
+        var cols = parseInt($('input[name="cols"]').val())
+        if (isNaN(rows) || isNaN(cols)) {
+            alert('Please enter number for rows and cols.')
+            return
+        }
+        else {
+            Commands.clear()
+            g_configuration.source_surface = new BezierSurfaces(cols, rows, default_canvas_size.width, default_canvas_size.height, 20)
+            g_configuration.target_surface = new BezierSurfaces(cols, rows, default_canvas_size.width, default_canvas_size.height, 20)
+            g_configuration.draw()
+        }
+
+    })
     g_configuration = new Configuration()
     {
         var c = $("#sourceCanvas")[0]

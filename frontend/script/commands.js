@@ -26,6 +26,11 @@ class Command {
         if (this._top >= this._commands.length - 1) return
         this._commands[++this._top].exec()
     }
+
+    clear() {
+        this._top = -1
+        this._commands = []
+    }
 }
 
 Commands = new Command()
