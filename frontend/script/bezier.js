@@ -55,12 +55,14 @@ class PointMoveCommand {
 
     exec() {
         this._point.move(this._new_pos.x, this._new_pos.y)
+        // important
         this._father._reverse_updated = false
         g_configuration.draw()
     }
 
     undo() {
         this._point.move(this._old_pos.x, this._old_pos.y)
+        // important
         this._father._reverse_updated = false
         g_configuration.draw()
     }
@@ -465,9 +467,12 @@ var interplate_canvas_according_to_bezier = (
     var index = 0
     for (var y = 0; y < height; ++y) {
         for (var x = 0; x < width; ++x) {
+            // get the uv according to reverse map of interplated bezier
             var uv = t_bezier.reverse_map[index]
+            // find the xy accoring to uv in source and target bezier
             var ps = source_beizer.point(uv.idx, uv.u, uv.v)
             var pt = target_bezier.point(uv.idx, uv.u, uv.v)
+            // interplate the pixel from source and target according to t
             var img_idx = index * 4
             var src_idx = (Math.round(ps.y) * width + Math.round(ps.x)) * 4
             var dst_idx = (Math.round(pt.y) * width + Math.round(pt.x)) * 4
