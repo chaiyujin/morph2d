@@ -453,7 +453,8 @@ class BezierSurfaces {
             this._clicked_old_pos = null
         }
         else if (this._batch_rect) {
-            if (!this._clicked_old_pos) {
+            // console.log('batch mode')
+            if (this._batch_select.length > 0 && !this._clicked_old_pos) {
                 // select
                 this._clicked_old_pos = {x: x, y: y}
                 this._batch_move_old_pos = {x: x, y: y}
